@@ -17,6 +17,7 @@ import org.junit.Test;
 
 import main.java.DBUtil;
 import main.java.FavoriteFieldOfStudy;
+import main.java.Location;
 import main.java.User;
 import main.java.UserDAO;
 
@@ -130,7 +131,7 @@ public class UserDAOTest {
 		String userName = "goingtodeletethis";
 		userDAO.createUser(userName, "anotherpassword");
 		//make sure it works if they added to other tables
-		userDAO.addFavField("goingtodeletethis", userDAO.getFieldID("Architecture and Related Services"), 3);
+		userDAO.modifyFavField("goingtodeletethis", userDAO.getFieldID("Architecture and Related Services"), 3);
 		userDAO.modifyResidence("goingtodeletethis", "the greatest city", 48, 12345);
 		userDAO.deleteUser(userName);
 		
@@ -289,12 +290,33 @@ public class UserDAOTest {
 	}
 	
 	@Test
-	public void testAddFavField() {
+	public void testGetResidence() {
+		userDAO.createUser("resUserTest", "fleventyfive");
+		
+		//no residence yet
+		Location invalidLoc = userDAO.getResidence("resUserTest");
+		assertFalse("Non-existent residence should return false", invalidLoc.isValid());
+		
+		//created a residence
+		userDAO.modifyResidence("resUserTest", "Twin Peaks", 53, 99228);
+		Location validLoc = userDAO.getResidence("resUserTest");
+		assertTrue("Valid residence should return true", validLoc.isValid());
+		assertEquals("Correct city not returned", "Twin Peaks", validLoc.getCity());
+		assertEquals("Correct state not returned", 53, validLoc.getStateInt());
+		assertEquals("Correct ZIP not returned", 99228, validLoc.getZip());
+	}
+	
+	@Test
+	public void testModifyFavField() {
 		int fieldID = userDAO.getFieldID("Psychology");
-		userDAO.addFavField(USERNAME_3, fieldID, 1);
+		userDAO.modifyFavField(USERNAME_3, fieldID, 1);
 		FavoriteFieldOfStudy field = userDAO.getFavFields(USERNAME_3).get(0);
 		assertEquals("Added field of study name not correct", "Psychology", field.getFieldOfStudy());
 		assertEquals("Added field of study rank not correct", 1, field.getRank());
+		//changing the rank
+		userDAO.modifyFavField(USERNAME_3, fieldID, 4);
+		FavoriteFieldOfStudy updatedField = userDAO.getFavFields(USERNAME_3).get(0);
+		assertEquals("Modified field of study rank not correct", 4, updatedField.getRank());
 	}
 	
 	@Test
@@ -307,15 +329,15 @@ public class UserDAOTest {
 		int fieldID2 = userDAO.getFieldID("Engineering");
 		int fieldID3 = userDAO.getFieldID("Computer and Information Sciences and Support Services");
 
-		userDAO.addFavField(USERNAME_4, fieldID, 4);
+		userDAO.modifyFavField(USERNAME_4, fieldID, 4);
 		List<FavoriteFieldOfStudy> fields = userDAO.getFavFields(USERNAME_4);
 		assertEquals("More than one favorite field of study found", 1, fields.size());
 		assertEquals("Field name not correct", "Mathematics and Statistics", fields.get(0).getFieldOfStudy());
 		assertEquals("Rank not correct", 4, fields.get(0).getRank());
 		
 		//multiple favs
-		userDAO.addFavField(USERNAME_4, fieldID2, 2);
-		userDAO.addFavField(USERNAME_4, fieldID3, 6);
+		userDAO.modifyFavField(USERNAME_4, fieldID2, 2);
+		userDAO.modifyFavField(USERNAME_4, fieldID3, 6);
 		fields = userDAO.getFavFields(USERNAME_4);
 		assertEquals("Wrong number of favorite fields", 3, fields.size());
 		assertEquals("Field name not correct", "Engineering", fields.get(0).getFieldOfStudy());
@@ -334,7 +356,7 @@ public class UserDAOTest {
 		String field3 = "Philosophy and Religious Studies";
 		
 		int fieldID = userDAO.getFieldID(field1);
-		userDAO.addFavField(USERNAME_1, fieldID, 2);
+		userDAO.modifyFavField(USERNAME_1, fieldID, 2);
 
 		//delete only fav
 		userDAO.deleteFavField(USERNAME_1, fieldID);
@@ -342,8 +364,8 @@ public class UserDAOTest {
 
 		int fieldID2 = userDAO.getFieldID(field2);
 		int fieldID3 = userDAO.getFieldID(field3);
-		userDAO.addFavField(USERNAME_1, fieldID2, 3);
-		userDAO.addFavField(USERNAME_1, fieldID3, 1);
+		userDAO.modifyFavField(USERNAME_1, fieldID2, 3);
+		userDAO.modifyFavField(USERNAME_1, fieldID3, 1);
 		
 		//delete 1 of 2
 		userDAO.deleteFavField(USERNAME_1, fieldID3);
