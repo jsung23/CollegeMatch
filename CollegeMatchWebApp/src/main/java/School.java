@@ -1,5 +1,7 @@
 package main.java;
 
+import java.util.ArrayList;
+
 /**
  * Represents a school record
  * 
@@ -7,6 +9,7 @@ package main.java;
  *
  */
 public class School {
+	private int ID;
 	private String name;
 	private String website;
 	private Location location;
@@ -20,6 +23,11 @@ public class School {
 	private double actAvg;
 	private int avgEarnings;
 	private int stdBodySz;
+	private int popProg1ID;
+	private int popProg2ID;
+	private int popProg3ID;
+	private int popProg4ID;
+	private int popProg5ID;
 	private String popProg1;
 	private String popProg2;
 	private String popProg3;
@@ -32,10 +40,41 @@ public class School {
 	private int medFamIncome;
 	private int avgAge;
 	private double firstGenStudentShare;
-	//Maybe include distance learning as boolean variable?
+	private boolean distanceLearning;
 	private double maleShare;
 	private double femaleShare;
-	private int ID;
+	private String levelString;
+	private double white;
+	private double black;
+	private double hispanic;
+	private double asian;
+	private double american_indian_alaskan_native;
+	private double multiethnic;
+	private double unknown_ethnicity;
+	private double nonresident;
+	private double native_hawaiian_pacific_islander;
+	
+	/*
+	 * returns distance learning boolean
+	 */
+	public boolean isDistanceLearning() {
+		return distanceLearning;
+	}
+	public void setDistanceLearning(boolean distanceLearning) {
+		this.distanceLearning = distanceLearning;
+	}
+	/*
+	 * returns level
+	 */
+	public String getLevelString() {
+		return levelString;
+	}
+	public void setLevelString(String levelString) {
+		this.levelString = levelString;
+	}
+	/*
+	 * return the ID
+	 */
 	public int getID() {
 		return ID;
 	}
@@ -198,6 +237,39 @@ public class School {
 	public void setStdBodySz(int stdBodySz) {
 		this.stdBodySz = stdBodySz;
 	}
+	/*
+	 * getters and setters for popular program IDs
+	 */
+	public int getPopProg1ID() {
+		return popProg1ID;
+	}
+	public void setPopProg1ID(int popProg1ID) {
+		this.popProg1ID = popProg1ID;
+	}
+	public int getPopProg2ID() {
+		return popProg2ID;
+	}
+	public void setPopProg2ID(int popProg2ID) {
+		this.popProg2ID = popProg2ID;
+	}
+	public int getPopProg3ID() {
+		return popProg3ID;
+	}
+	public void setPopProg3ID(int popProg3ID) {
+		this.popProg3ID = popProg3ID;
+	}
+	public int getPopProg4ID() {
+		return popProg4ID;
+	}
+	public void setPopProg4ID(int popProg4ID) {
+		this.popProg4ID = popProg4ID;
+	}
+	public int getPopProg5ID() {
+		return popProg5ID;
+	}
+	public void setPopProg5ID(int popProg5ID) {
+		this.popProg5ID = popProg5ID;
+	}
 	/**
 	 * @return the popProg1
 	 */
@@ -358,4 +430,59 @@ public class School {
 	public double getFemaleShare() {
 		return this.femaleShare;
 	}
+	public double getWhite() {
+		return white;
+	}
+	public void setWhite(double white) {
+		this.white = white;
+	}
+	public double getBlack() {
+		return black;
+	}
+	public void setBlack(double black) {
+		this.black = black;
+	}
+	public double getHispanic() {
+		return hispanic;
+	}
+	public void setHispanic(double hispanic) {
+		this.hispanic = hispanic;
+	}
+	public double getAsian() {
+		return asian;
+	}
+	public void setAsian(double asian) {
+		this.asian = asian;
+	}
+	public double getAmerican_indian_alaskan_native() {
+		return american_indian_alaskan_native;
+	}
+	public void setAmerican_indian_alaskan_native(double american_indian_alaskan_native) {
+		this.american_indian_alaskan_native = american_indian_alaskan_native;
+	}
+	public double getMultiethnic() {
+		return multiethnic;
+	}
+	public void setMultiethnic(double multiethnic) {
+		this.multiethnic = multiethnic;
+	}
+	public double getUnknown_ethnicity() {
+		return unknown_ethnicity;
+	}
+	public void setUnknown_ethnicity(double unknown_ethnicity) {
+		this.unknown_ethnicity = unknown_ethnicity;
+	}
+	public double getNonresident() {
+		return nonresident;
+	}
+	public void setNonresident(double nonresident) {
+		this.nonresident = nonresident;
+	}
+	public double getNative_hawaiian_pacific_islander() {
+		return native_hawaiian_pacific_islander;
+	}
+	public void setNative_hawaiian_pacific_islander(double native_hawaiian_pacific_islander) {
+		this.native_hawaiian_pacific_islander = native_hawaiian_pacific_islander;
+	}
+	
 }
