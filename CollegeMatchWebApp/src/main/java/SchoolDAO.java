@@ -3,6 +3,8 @@ package main.java;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -73,6 +75,13 @@ public class SchoolDAO {
 		} else if (val.getType() == ValType.OR_GROUP) {
 			return buildORGroupConditionString(c, i).toString();
 		}
+		//case for "? IN (<multiple columns>)"
+		//Kept it limited to ValType.INT because there doesn't seem to be
+		//any other use case for school table where IN operator is useful
+		else if ((val.getType() == ValType.INT) && 
+		c.getColumnName().startsWith("(") && c.getColumnName().endsWith(")")) {
+			return buildINMultipleColumnsConditionString(c, i);
+		}
 		String condStr = c.getColumnName();
 		switch (c.getConditionType()) {
 			case RANGE:	condStr += " BETWEEN ? AND ?";
@@ -106,6 +115,13 @@ public class SchoolDAO {
 		}
 		return condStr;
 	}
+	private String buildINMultipleColumnsConditionString(Condition c, Index i) {
+		CondVal val = c.getValue();
+		String condStr = val.getIntVal() + " IN " + c.getColumnName();
+		val.setIndex(i.getAndIncrement());
+		return condStr;
+	}
+	
 	
 	private String buildSingleStringSubqueryConditionString(Condition c, Index i) {
 		String condStr = c.getColumnName();
@@ -246,6 +262,31 @@ public class SchoolDAO {
 		return c;
 	}
 	
+	/*
+	 * Returns condition for checking whether school contains user-specified field(s) of study
+	 * in its top five fields of study, using OR logic
+	 * 
+	 * @param list of fields
+	 * @return condition for checking whether school contains user-specified field of study
+	 * in its top five fields of study
+	 */
+	public Condition containsSelectedFieldOfStudy(ArrayList<Integer> fieldIDList) {
+		/*
+		 * WHERE fieldID IN (school.pop_prog_1, pop_prog_2...)
+		 */
+		List<Condition> userSelectedFieldsOfStudy = new LinkedList<Condition>();
+		Iterator<Integer> fieldIDListIterator = fieldIDList.iterator();
+		while (fieldIDListIterator.hasNext()) {
+			CondVal ForFieldID = CondVal.createIntVal(fieldIDListIterator.next());
+			Condition c = new Condition("(pop_prog_1, pop_prog_2, pop_prog_3, pop_prog_4,"
+					+ " pop_prog_5)", CondType.IN, ForFieldID);
+			userSelectedFieldsOfStudy.add(c);
+		}
+		CondVal orFields = CondVal.createORGroupVal(userSelectedFieldsOfStudy);
+		Condition orFieldsCondition = new Condition("", CondType.OR_GROUP, orFields);
+		return orFieldsCondition;
+	}
+	
 	/**
 	 * 
 	 * @param sb StringBuilder for the PreparedStatement
@@ -283,6 +324,10 @@ public class SchoolDAO {
 		
 		return schools;
 	}
+	
+	/*
+	 * TODO Method for schools within x miles of user's residence location
+	 */
 	
 	/**
 	 * Takes a list of conditions and inserts them into a PreparedStatement. Assumes that the indices into the 
