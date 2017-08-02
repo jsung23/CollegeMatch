@@ -23,6 +23,11 @@ public class SchoolDAO {
 	public static final byte ETHNIC = 0x2;
 	public static final byte REGION = 0x4;
 	
+	//For specifying AND/OR logic when users search
+	//Likely determined by button/dropdown option
+	public static final byte AND = 0x8;
+	public static final byte OR = 0x10;
+	
 	public SchoolDAO() {
 		dbUtil = new DBUtil();
 	}
@@ -287,9 +292,16 @@ public class SchoolDAO {
 		return orFieldsCondition;
 	}
 	
+	/*
+	 * TODO Method to return condition for schools within x miles of user's residence location
+	 */
 	
 	/*
-	 * TODO Method for schools within x miles of user's residence location
+	 * TODO Method to return Full School Page View
+	 */
+	
+	/*
+	 * TODO 
 	 */
 	
 	/**

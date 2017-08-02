@@ -35,6 +35,13 @@ public class School {
 	//Maybe include distance learning as boolean variable?
 	private double maleShare;
 	private double femaleShare;
+	private int ID;
+	public int getID() {
+		return ID;
+	}
+	public void setID(int iD) {
+		ID = iD;
+	}
 	/**
 	 * @return the name
 	 */
