@@ -31,7 +31,6 @@ public class School {
 	private String popProg5;
 	private int tuitionIn;
 	private int tuitionOut;
-	private List<FieldOfStudy> offeredFieldsOfStudy;
 	private double medDebt;
 	private int avgFamIncome;
 	private int medFamIncome;
@@ -42,6 +41,7 @@ public class School {
 	private double femaleShare;
 	//Ethnicities as a hashmap? List<ethnicity>? Would need to make ethnicity class
 	private HashMap<String,Double> ethnicityMap;
+	private List<String> offeredFieldsOfStudy;
 	/**
 	 * @return the name
 	 */
@@ -285,13 +285,13 @@ public class School {
 	/*
 	 * @param studyField
 	 */
-	public void setOfferedFields(List<FieldOfStudy> studyField) {
+	public void setOfferedFields(List<String> studyField) {
 		this.offeredFieldsOfStudy = studyField;
 	}
 	/*
 	 * @return offeredFieldsOfStudy
 	 */
-	public List<FieldOfStudy> getOfferedFields() {
+	public List<String> getOfferedFields() {
 		return this.offeredFieldsOfStudy;
 	}
 	/*
