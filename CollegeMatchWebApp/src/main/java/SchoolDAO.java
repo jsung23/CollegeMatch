@@ -287,6 +287,11 @@ public class SchoolDAO {
 		return orFieldsCondition;
 	}
 	
+	
+	/*
+	 * TODO Method for schools within x miles of user's residence location
+	 */
+	
 	/**
 	 * 
 	 * @param sb StringBuilder for the PreparedStatement
@@ -324,10 +329,6 @@ public class SchoolDAO {
 		
 		return schools;
 	}
-	
-	/*
-	 * TODO Method for schools within x miles of user's residence location
-	 */
 	
 	/**
 	 * Takes a list of conditions and inserts them into a PreparedStatement. Assumes that the indices into the 
