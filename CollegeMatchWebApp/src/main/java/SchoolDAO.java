@@ -3,8 +3,6 @@ package main.java;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -75,7 +73,6 @@ public class SchoolDAO {
 		} else if (val.getType() == ValType.OR_GROUP) {
 			return buildORGroupConditionString(c, i).toString();
 		}
-		
 		String condStr = c.getColumnName();
 		switch (c.getConditionType()) {
 			case RANGE:	condStr += " BETWEEN ? AND ?";
@@ -104,10 +101,6 @@ public class SchoolDAO {
 						val.setIndex(i.getAndIncrement());
 						break;
 			case IN: condStr += " IN ?";
-						val.setIndex(i.getAndIncrement());
-						break;
-			case REVERSE_IN:
-						condStr = "? IN" + condStr;
 						val.setIndex(i.getAndIncrement());
 						break;
 		}
@@ -180,9 +173,8 @@ public class SchoolDAO {
 	 */
 	private StringBuilder selectAndJoin(byte tablesToJoin) {
 		String baseQuery = 
-				"SELECT school.id AS id, school.name AS name, school.url AS url, school.tuition_and_fees_out AS outOfState, "
-				+ "school.tuition_and_fees_in AS inState, location.city AS city, location.state_string AS stateStr FROM school,"
-				+ "school.SAT_avg, school.ACT_avg, school.adm_rate FROM school";
+				"SELECT school.name AS name, school.url AS url, school.tuition_and_fees_out AS outOfState, "
+				+ "school.tuition_and_fees_in AS inState, location.city AS city, location.state_string AS stateStr FROM school";
 		StringBuilder queryBuilder = new StringBuilder(baseQuery);
 		//JOINS
 		queryBuilder.append(" JOIN school_loc ON school_loc.school_ID = school.ID "
@@ -254,160 +246,6 @@ public class SchoolDAO {
 		return c;
 	}
 	
-	/*
-	 * Returns condition for checking whether school contains user-specified field(s) of study
-	 * in its top five fields of study, using OR logic
-	 * 
-	 * @param list of fields
-	 * @return condition for checking whether school contains user-specified field of study
-	 * in its top five fields of study
-	 */
-	public Condition containsSelectedFieldOfStudy(ArrayList<Integer> fieldIDList) {
-		/*
-		 * WHERE fieldID IN (school.pop_prog_1, pop_prog_2...)
-		 */
-		List<Condition> userSelectedFieldsOfStudy = new LinkedList<Condition>();
-		Iterator<Integer> fieldIDListIterator = fieldIDList.iterator();
-		while (fieldIDListIterator.hasNext()) {
-			CondVal ForFieldID = CondVal.createIntVal(fieldIDListIterator.next());
-			Condition c = new Condition("(pop_prog_1, pop_prog_2, pop_prog_3, pop_prog_4,"
-					+ " pop_prog_5)", CondType.REVERSE_IN, ForFieldID);
-			userSelectedFieldsOfStudy.add(c);
-		}
-		CondVal orFields = CondVal.createORGroupVal(userSelectedFieldsOfStudy);
-		Condition orFieldsCondition = new Condition("", CondType.OR_GROUP, orFields);
-		return orFieldsCondition;
-	}
-	
-	public School getSingleSchoolViewInfo(int schoolID) throws SQLException {
-		String fullSchoolQuery = 
-				"SELECT school.id AS id, school.name AS name, school.url AS url, school.avg_cost, school.SAT_pct_25_cumulative,"
-				+ "school.SAT_pct_75_cumulative, school.ACT_pct_25_cumulative, school.ACT_pct_75_cumulative,"
-				+ "school.tuition_and_fees_out AS outOfState, school.std_bdy_sz as student_body_size, school.pop_prog_1, school.pop_prog_2,"
-				+ "school.pop_prog_3, school.pop_prog_4, school.pop_prog_5, school.avg_fam_inc, school.med_fam_inc, school.avg_entry_age,"
-				+ "school.1_gen_std_share AS firstGenStudentShare, school.level, school.dist_learning AS distanceLearning,"
-				+ "school.tuition_and_fees_in AS inState, school.tuition_and_fees_out AS outOfState,"
-				+ " location.city AS city, school.SAT_avg, school.ACT_avg, school.adm_rate, genderdemographics.female, genderdemographics.male,"
-				+ "ethnicdemographics.white, ethnicdemographics.black, ethnicdemographics.hispanic, ethnicdemographics.asian,"
-				+ "ethnicdemographics.american_indian_alaskan_native, ethnicdemographics.native_hawaiian_pacific_islander, "
-				+ "ethnicdemographics.two_or_more AS multiethnic, ethnicdemographics.unknown AS unknownEthnicity, "
-				+ "ethnicdemographics.nonresident AS nonresidentAlien, location.city, location.state_string";
-		String FROM = 
-				" FROM school JOIN location ON school_loc.loc_ID = location.ID"
-				+ " JOIN GenderDemographics ON school.GenderDemographics_ID = GenderDemographics.ID"
-				+ " JOIN EthnicDemographics ON school.EthnicDemographics_ID = EthnicDemographics.ID"
-				+ " JOIN region ON location.state = region.state";
-		String WHERE =
-				" WHERE school.id = ?";
-		FROM += WHERE;
-		fullSchoolQuery += FROM;
-		
-		PreparedStatement pstmt = dbUtil.getConnection().prepareStatement(fullSchoolQuery);
-		pstmt.setInt(1, schoolID);
-		ResultSet rs = pstmt.executeQuery();
-		School school = new School();
-		if (rs.next()) {
-			Location loc = new Location();
-			loc.setCity(rs.getString("city"));
-			loc.setStateStr(rs.getString("state_string"));
-			school.setLocation(loc);
-			school.setSchoolID(rs.getInt("id"));
-			school.setName(rs.getString("name"));
-			school.setWebsite(rs.getString("url"));
-			school.setAvgCost(rs.getInt("avg_cost"));
-			school.setSat25(rs.getDouble("SAT_pct_25_cumulative"));
-			school.setSatAvg(rs.getDouble("SAT_avg"));
-			school.setSat75(rs.getDouble("SAT_pct_75_cumulative"));
-			school.setAct25(rs.getDouble("ACT_pct_25_cumulative"));
-			school.setActAvg(rs.getDouble("ACT_avg"));
-			school.setTuitionIn(rs.getInt("inState"));
-			school.setTuitionOut(rs.getInt("outOfState"));
-			school.setAdmissionRate(rs.getDouble("adm_rate"));
-			school.setStdBodySz(rs.getInt("student_body_size"));
-			school.setPopProg1ID(rs.getInt("pop_prog_1"));
-			school.setPopProg2ID(rs.getInt("pop_prog_2"));
-			school.setPopProg3ID(rs.getInt("pop_prog_3"));
-			school.setPopProg4ID(rs.getInt("pop_prog_4"));
-			school.setPopProg5ID(rs.getInt("pop_prog_5"));
-			school.setAvgFamilyIncome(rs.getInt("avg_fam_inc"));
-			school.setMedianFamIncome(rs.getInt("med_fam_inc"));
-			school.setEntryAge(rs.getInt("avg_entry_age"));
-			school.setFirstGenStudentShare(rs.getDouble("firstGenStudentShare"));
-			if (rs.getInt("level") == 1) {
-			school.setLevelString("4-year");
-			}
-			else if (rs.getInt("level") == 2) {
-				school.setLevelString("2-year");
-			}
-			if (rs.getInt("distanceLearning") != 0) {
-				school.setDistanceLearning(true);
-			}
-			else  {
-				school.setDistanceLearning(false);
-			}
-			school.setTuitionIn(rs.getInt("inState"));
-			school.setTuitionOut(rs.getInt("outOfState"));
-			school.setAdmissionRate(rs.getDouble("adm_rate"));
-			school.setGenderShare(rs.getDouble("male"), rs.getDouble("female"));
-			school.setWhite(rs.getDouble("white"));
-			school.setBlack(rs.getDouble("black"));
-			school.setHispanic(rs.getDouble("hispanic"));
-			school.setAsian(rs.getDouble("asian"));
-			school.setAmerican_indian_alaskan_native(rs.getDouble("american_indian_alaskan_native"));
-			school.setNative_hawaiian_pacific_islander(rs.getDouble("native_hawaiian_pacific_islander"));
-			school.setMultiethnic(rs.getDouble("multiethnic"));
-			school.setUnknown_ethnicity(rs.getDouble("unknownEthnicity"));
-			school.setNonresident(rs.getDouble("nonresidentAlien"));
-			//Top 5 fields queries
-			String PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
-					+ "WHERE fieldsOfStudy.ID = ?";
-			pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
-			pstmt.setInt(1, school.getPopProg1ID());
-			ResultSet PopProgRS = pstmt.executeQuery();
-			school.setPopProg1(PopProgRS.getString(1));
-
-			//pop prog 2
-			PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
-					+ "WHERE fieldsOfStudy.ID = ?";
-			pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
-			pstmt.setInt(1, school.getPopProg2ID());
-			PopProgRS = pstmt.executeQuery();
-			school.setPopProg2(PopProgRS.getString(1));
-
-			//pop prog 3
-			PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
-					+ "WHERE fieldsOfStudy.ID = ?";
-			pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
-			pstmt.setInt(1, school.getPopProg3ID());
-			PopProgRS = pstmt.executeQuery();
-			school.setPopProg3(PopProgRS.getString(1));
-			
-			//pop prog 4 
-			PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
-					+ "WHERE fieldsOfStudy.ID = ?";
-			pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
-			pstmt.setInt(1, school.getPopProg4ID());
-			PopProgRS = pstmt.executeQuery();
-			school.setPopProg4(PopProgRS.getString(1));
-		
-			//pop prog 5
-			PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
-					+ "WHERE fieldsOfStudy.ID = ?";
-			pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
-			pstmt.setInt(1, school.getPopProg5ID());
-			PopProgRS = pstmt.executeQuery();
-			school.setPopProg5(PopProgRS.getString(1));
-			DBUtil.closeResultSet(PopProgRS);
-			DBUtil.closeResultSet(rs);
-			DBUtil.closeStatement(pstmt);
-		}
-		return school;
-	}
-	
-	/*
-	 * TODO Method to return condition for schools within x miles of user's residence location
-	 */
-	
 	/**
 	 * 
 	 * @param sb StringBuilder for the PreparedStatement
@@ -426,17 +264,37 @@ public class SchoolDAO {
 			while (rs.next()) {
 				School s = new School();
 				Location l = new Location();
-				l.setCity(rs.getString("city"));
-				l.setStateStr(rs.getString("stateStr"));
+				String city = rs.getString("city");
+				if (!rs.wasNull()) {
+					l.setCityIsNotNull(true);
+					l.setCity(city);
+				}
+				String state = rs.getString("stateStr");
+				if (!rs.wasNull()) {
+					l.setStateStrIsNotNull(true);
+					l.setStateStr(state);
+				}
 				s.setLocation(l);
-				s.setSchoolID(rs.getInt("id"));
-				s.setName(rs.getString("name"));
-				s.setWebsite(rs.getString("url"));
-				s.setTuitionIn(rs.getInt("inState"));
-				s.setTuitionOut(rs.getInt("outOfState"));
-				s.setSatAvg(rs.getDouble("SAT_avg"));
-				s.setActAvg(rs.getDouble("ACT_avg"));
-				s.setAdmissionRate(rs.getDouble("adm_rate"));
+				String name = rs.getString("name");
+				if (!rs.wasNull()) {
+					s.setNameIsNotNull(true);
+					s.setName(name);
+				}
+				String url = rs.getString("url");
+				if (!rs.wasNull()) {
+					s.setWebsiteIsNotNull(true);
+					s.setWebsite(url);
+				}
+				int inState = rs.getInt("inState");
+				if (!rs.wasNull()) {
+					s.setTuitionInIsNotNull(true);
+					s.setTuitionIn(inState);
+				}
+				int outState = rs.getInt("outOfState");
+				if (!rs.wasNull()) {
+					s.setTuitionOutIsNotNull(true);
+					s.setTuitionOut(outState);
+				}
 				schools.addLast(s);
 			}
 		} catch (SQLException e) {
