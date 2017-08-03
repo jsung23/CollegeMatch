@@ -311,7 +311,7 @@ public class SchoolDAO {
 			loc.setCity(rs.getString("city"));
 			loc.setStateStr(rs.getString("state_string"));
 			school.setLocation(loc);
-			school.setID(rs.getInt("id"));
+			school.setSchoolID(rs.getInt("id"));
 			school.setName(rs.getString("name"));
 			school.setWebsite(rs.getString("url"));
 			school.setAvgCost(rs.getInt("avg_cost"));
@@ -382,7 +382,7 @@ public class SchoolDAO {
 			PopProgRS = pstmt.executeQuery();
 			school.setPopProg3(PopProgRS.getString(1));
 			
-			//pop prog 4
+			//pop prog 4 
 			PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
 					+ "WHERE fieldsOfStudy.ID = ?";
 			pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
@@ -408,14 +408,6 @@ public class SchoolDAO {
 	 * TODO Method to return condition for schools within x miles of user's residence location
 	 */
 	
-	/*
-	 * TODO Method to return Full School Page View
-	 */
-	
-	/*
-	 * TODO 
-	 */
-	
 	/**
 	 * 
 	 * @param sb StringBuilder for the PreparedStatement
@@ -437,7 +429,7 @@ public class SchoolDAO {
 				l.setCity(rs.getString("city"));
 				l.setStateStr(rs.getString("stateStr"));
 				s.setLocation(l);
-				s.setID(rs.getInt("id"));
+				s.setSchoolID(rs.getInt("id"));
 				s.setName(rs.getString("name"));
 				s.setWebsite(rs.getString("url"));
 				s.setTuitionIn(rs.getInt("inState"));
