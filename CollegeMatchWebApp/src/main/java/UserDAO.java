@@ -510,7 +510,7 @@ public class UserDAO {
 			while (rs.next()) {
 				FavoriteSchool fav = new FavoriteSchool();
 				School school = new School();
-				school.setID(rs.getInt(1));
+				school.setSchoolID(rs.getInt(1));
 				school.setName(rs.getString(2));
 				fav.setSchool(school);
 				fav.setRank(rs.getInt(3));
