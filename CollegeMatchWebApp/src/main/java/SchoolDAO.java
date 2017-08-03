@@ -174,7 +174,8 @@ public class SchoolDAO {
 	private StringBuilder selectAndJoin(byte tablesToJoin) {
 		String baseQuery = 
 				"SELECT school.name AS name, school.url AS url, school.tuition_and_fees_out AS outOfState, "
-				+ "school.tuition_and_fees_in AS inState, location.city AS city, location.state_string AS stateStr FROM school";
+				+ "school.tuition_and_fees_in AS inState, location.city AS city, location.state_string AS stateStr, school.sat_avg,"
+				+ "school.act_avg, school.adm_rate, FROM school";
 		StringBuilder queryBuilder = new StringBuilder(baseQuery);
 		//JOINS
 		queryBuilder.append(" JOIN school_loc ON school_loc.school_ID = school.ID "
@@ -320,6 +321,21 @@ public class SchoolDAO {
 				if (!rs.wasNull()) {
 					s.setTuitionOutIsNotNull(true);
 					s.setTuitionOut(outState);
+				}
+				double satAvg = rs.getDouble("SAT_avg");
+				if (!rs.wasNull()) {
+					s.setSatAvgIsNotNull(true);
+					s.setSatAvg(satAvg);
+				}
+				double actAvg = rs.getDouble("ACT_avg");
+				if (!rs.wasNull()) {
+					s.setActAvgIsNotNull(true);
+					s.setActAvg(actAvg);
+				}
+				double admissionRate = rs.getDouble("adm_rate");
+				if (!rs.wasNull()) {
+					s.setAdmissionRateIsNotNull(true);
+					s.setAdmissionRate(admissionRate);
 				}
 				schools.addLast(s);
 			}
