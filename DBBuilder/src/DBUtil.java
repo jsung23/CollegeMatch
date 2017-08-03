@@ -609,13 +609,10 @@ public class DBUtil {
 			pstmt.setInt(1, 66); //GU
 			pstmt.setString(2, OUTLYING_AREAS);
 			pstmt.execute();
-			
-			/* WE SHOULD DELETE THIS ONE. SEARCHING THROUGH DATABASE FOR SCHOOL
-			 * MATCHING STATE ID==68 DOESN'T RETURN ANY SCHOOL
+
 			pstmt.setInt(1, 68); //MH
 			pstmt.setString(2, OUTLYING_AREAS);
 			pstmt.execute();
-			*/
 			
 			pstmt.setInt(1, 69); //MP
 			pstmt.setString(2, OUTLYING_AREAS);

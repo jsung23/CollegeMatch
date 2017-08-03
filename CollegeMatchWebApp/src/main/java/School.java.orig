@@ -91,3 +91,4 @@ public class School {
 	//fields of study
 	public static final String FOS_ID = "fieldsOfStudy.ID";
 	public static final String FOS_NAME = "fieldsOfStudy.name";
+}

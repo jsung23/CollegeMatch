@@ -510,13 +510,14 @@ public class UserDAO {
 			while (rs.next()) {
 				FavoriteSchool fav = new FavoriteSchool();
 				School school = new School();
-				school.setName(rs.getString(1));
+				school.setID(rs.getInt(1));
+				school.setName(rs.getString(2));
 				fav.setSchool(school);
-				fav.setRank(rs.getInt(2));
-				fav.setStatus(rs.getString(3));
-				fav.setFinancialAid(rs.getInt(4));
-				fav.setLoan(rs.getInt(5));
-				fav.setMerit(rs.getInt(6));
+				fav.setRank(rs.getInt(3));
+				fav.setStatus(rs.getString(4));
+				fav.setFinancialAid(rs.getInt(5));
+				fav.setLoan(rs.getInt(6));
+				fav.setMerit(rs.getInt(7));
 				favs.addLast(fav);
 			}
 		} catch (SQLException e) {
