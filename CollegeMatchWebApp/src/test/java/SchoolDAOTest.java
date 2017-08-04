@@ -6,6 +6,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -19,6 +21,7 @@ import main.java.Condition;
 import main.java.DBUtil;
 import main.java.School;
 import main.java.SchoolDAO;
+import main.java.SortColumn;
 import main.java.UserDAO;
 
 public class SchoolDAOTest {
@@ -35,14 +38,44 @@ public class SchoolDAOTest {
 	
 	@Test
 	public void testGetSchools() {
+		testContainsUserFieldsOfStudy();
 		testOneCondition();
 		testSimpleConditions();
 		testWithFavs();
 		testNullValues();
 		testMyScores();
 		testJoinConditions();
+		testOrderBy();
 	}
 	
+	private void testContainsUserFieldsOfStudy() {
+		ArrayList<Integer> fieldIDList = new ArrayList<Integer>();
+		fieldIDList.add(13); //for University of Arkansas-Fort Smith
+		fieldIDList.add(47); //for University of Arkansas at Monticello
+		fieldIDList.add(43); //for University of Arkansas at Little Rock & University of Arkansas at Pine Bluff
+		fieldIDList.add(14); //for University of Arkansas
+		Condition hasFields = schoolDAO.containsSelectedFieldOfStudy(fieldIDList);
+		Condition ArkansasSchools = new Condition("school.name", CondType.LIKE, CondVal.createStrVal("University of Arkansas%"));
+		Condition NotCollegeInName = new Condition("school.name NOT", CondType.LIKE, CondVal.createStrVal("%College%"));
+		ArrayList<Condition> fieldsArrayList = new ArrayList<Condition>();
+		fieldsArrayList.add(hasFields);
+		fieldsArrayList.add(ArkansasSchools);
+		fieldsArrayList.add(NotCollegeInName);
+		byte allTables = 0x7;
+		List<School> schools = schoolDAO.getSchools(fieldsArrayList, allTables);
+		ArrayList<String> schoolNames = new ArrayList<String>();
+		for (School school : schools) {
+			schoolNames.add(school.getName());
+		}
+		ArrayList<String> compareNames = new ArrayList<String>();
+		compareNames.add("University of Arkansas at Little Rock");
+		compareNames.add("University of Arkansas");
+		compareNames.add("University of Arkansas at Pine Bluff");
+		compareNames.add("University of Arkansas at Monticello");
+		compareNames.add("University of Arkansas-Fort Smith");
+		assertTrue("Schools with user-selected fields of study appear", schoolNames.equals(compareNames));
+	}
+
 	private void testOneCondition() {
 		Condition c = 
 				new Condition( "school.tuition_and_fees_out", 					//out of state tuition < 20000
@@ -182,6 +215,28 @@ public class SchoolDAOTest {
 		regionConditions.add(name);
 		List<School> regionSchools = schoolDAO.getSchools(regionConditions, tablesToJoin);
 		assertEquals("Correct school not found", "Atlantic University College", regionSchools.get(0).getName());
+	}
+	
+	private void testOrderBy() {
+		//one column ASC
+		List<Condition> conditions = new LinkedList<Condition>();
+		conditions.add(
+				new Condition(School.NAME, CondType.LIKE, CondVal.createStrVal("University of California-Santa%")));
+		List<SortColumn> cols = new LinkedList<SortColumn>();
+		cols.add(new SortColumn(School.SAT_AVG, true));
+		List<School> schoolsAsc = 
+				schoolDAO.getSchools(conditions, SchoolDAO.NONE, cols);
+		assertEquals("Order incorrect", 110714, schoolsAsc.get(0).getId());
+		assertEquals("Order incorrect", 110705, schoolsAsc.get(1).getId());
+		//one column DESC
+		cols = new LinkedList<SortColumn>();
+		cols.add(new SortColumn(School.SAT_AVG, false));
+		List<School> schoolsDesc = 
+				schoolDAO.getSchools(conditions, SchoolDAO.NONE, cols);
+		assertEquals("Order incorrect", 110705, schoolsDesc.get(0).getId());
+		assertEquals("Order incorrect", 110714, schoolsDesc.get(1).getId());
+		//two columns
+		//TODO SQL string looks right but can't verify with workbench cause that's not showing everything
 	}
 	
 	@After
