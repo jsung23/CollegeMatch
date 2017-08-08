@@ -2,37 +2,42 @@ package com.servlets;
 
 import java.io.IOException;
 import main.java.UserDAO;
+import main.java.User;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.Random;
 
-public class SaveUserPassword extends HttpServlet {
+public class ReplacePassword extends HttpServlet {
 	private static final long serialVersionUID = 1L;
+	
 	public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		doGet(request, response);
 	}
 	
 	public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		getServletContext().getRequestDispatcher("/cookie").include(request,response);
-		String username = (String)request.getAttribute("user");
+		String username = request.getParameter("retrieve_un");
 		
 		UserDAO db = new UserDAO();
+		User user = db.getUser(username);
 		
-		String oldPw = request.getParameter("old_pw");
-		String newPw = request.getParameter("new_pw");
-		
-		boolean validPw;
-		if (oldPw.length() > 0) {
-			validPw = db.verifyPassword(username, oldPw);
-		} else {
-			validPw = true;
-		}
-		if (!validPw) {
-			response.sendRedirect("editmyuser?pwfail");
-		} else {
+		if (user.isValid()) {
+			Random rand = new Random();
+			
+			String newPw = new String();
+			while (newPw.length() < 8) {
+				char newChar = (char)(rand.nextInt(93) + 34);
+				newPw = newPw + newChar;
+			}
+			
 			db.updatePassword(username, newPw);
-			response.sendRedirect("editmyuser?success");
+			
+			request.setAttribute("newPw",newPw);
+			
+			getServletContext().getRequestDispatcher("/newpw.jsp").forward(request,response);
+		} else {
+			response.sendRedirect("retrievepw.jsp?nouser");
 		}
 	}
 }

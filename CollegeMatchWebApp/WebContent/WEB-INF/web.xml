@@ -66,6 +66,14 @@
 	<servlet-name>QuickSearch</servlet-name>
 	<servlet-class>com.servlets.QuickSearch</servlet-class>
   </servlet>
+  <servlet>
+	<servlet-name>SavePassword</servlet-name>
+	<servlet-class>com.servlets.SaveUserPassword</servlet-class>
+  </servlet>
+  <servlet>
+	<servlet-name>ReplacePassword</servlet-name>
+	<servlet-class>com.servlets.ReplacePassword</servlet-class>
+  </servlet>
   
   
   <servlet-mapping>
@@ -102,11 +110,11 @@
   </servlet-mapping>
   <servlet-mapping>
 	<servlet-name>EditFavoriteForm</servlet-name>
-	<url-pattern>/editFav*</url-pattern>
+	<url-pattern>/editFav</url-pattern>
   </servlet-mapping>
   <servlet-mapping>
 	<servlet-name>SchoolDetails</servlet-name>
-	<url-pattern>/viewSchool*</url-pattern>
+	<url-pattern>/viewSchool</url-pattern>
   </servlet-mapping>
   <servlet-mapping>
 	<servlet-name>SaveFavoriteData</servlet-name>
@@ -123,5 +131,13 @@
   <servlet-mapping>
 	<servlet-name>QuickSearch</servlet-name>
 	<url-pattern>/quicksearch</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+	<servlet-name>SavePassword</servlet-name>
+	<url-pattern>/savepw</url-pattern>
+  </servlet-mapping>
+  <servlet-mapping>
+	<servlet-name>ReplacePassword</servlet-name>
+	<url-pattern>/retrievepw</url-pattern>
   </servlet-mapping>
 </web-app>

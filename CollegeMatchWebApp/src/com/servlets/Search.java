@@ -61,8 +61,14 @@ public class Search extends HttpServlet {
 			List<Condition> OrGroup = new ArrayList<Condition>();
 			switch(type) {
 			case "distance":
-				// TODO: API?
-				
+				tablesToJoin |= SchoolDAO.COORDINATES;
+				int distance = Integer.parseInt(request.getParameter(opener + "dist"));
+				if (request.getParameter(opener + "check") != null) { // Use my location
+					conditions.add(db.distanceRange(distance, username));
+				} else { // Use entered ZIP
+					int zipCode = Integer.parseInt(request.getParameter(opener + "text"));
+					conditions.add(db.distanceRange(distance, zipCode));
+				}
 				break;
 			case "citystate":
 				String city = request.getParameter(opener + "text");
@@ -133,12 +139,16 @@ public class Search extends HttpServlet {
 				break;
 			case "special":
 				if (criterion.equals("favorites")) {
-					if (request.getParameter(opener + "check").equals("1")) {
-						conditions.add(db.favsInOffers(username));
+					if (request.getParameter(opener + "check") != null) {
+						if (request.getParameter(opener + "check").equals("1")) {
+							conditions.add(db.favsInOffers(username));
+						}
 					}
 				} else if (criterion.equals("fav5")) {
-					if (request.getParameter(opener + "check").equals("1")) {
-						conditions.add(db.favsInTopFive(username));
+					if (request.getParameter(opener + "check") != null) {
+						if (request.getParameter(opener + "check").equals("1")) {
+							conditions.add(db.favsInTopFive(username));
+						}
 					}
 				} else {
 					comparison = request.getParameter(opener + "comp");
@@ -167,8 +177,10 @@ public class Search extends HttpServlet {
 				}
 				break;
 			case "boolean":
-				cValue = CondVal.createIntVal(Integer.parseInt(request.getParameter(opener + "check")));
-				conditions.add(new Condition(colName,CondType.EQ,cValue));
+				if (request.getParameter(opener + "check") != null) {
+					cValue = CondVal.createIntVal(Integer.parseInt(request.getParameter(opener + "check")));
+					conditions.add(new Condition(colName,CondType.EQ,cValue));
+				}
 				break;
 			}
 		}
@@ -303,6 +315,8 @@ public class Search extends HttpServlet {
 			return School.AVG_FAM_INC;
 		case "medinc":
 			return School.MED_FAM_INC;
+		case "meddebt":
+			return School.MED_DEBT;
 		case "tuitionin":
 			return School.TUITION_IN;
 		case "tuitionout":

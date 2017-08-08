@@ -1,7 +1,9 @@
 package com.servlets;
 
 import java.io.IOException;
-import main.java.*;
+import main.java.UserDAO;
+import main.java.FavoriteSchool;
+import main.java.School;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -53,7 +55,7 @@ public class EditFavoriteForm extends HttpServlet {
 			request.setAttribute("fullName", schoolName);
 			request.setAttribute("id", schoolId);
 
-			getServletContext().getRequestDispatcher("/editfav.jsp").forward(request,response);
+			getServletContext().getRequestDispatcher("/editfavschool.jsp").forward(request,response);
 		}
 	}
 }

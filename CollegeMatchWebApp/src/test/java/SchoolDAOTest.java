@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -46,6 +45,115 @@ public class SchoolDAOTest {
 		testMyScores();
 		testJoinConditions();
 		testOrderBy();
+		testDistance();
+		testGetSingleSchoolViewInfo();
+	}
+	
+	private void testGetSingleSchoolViewInfo() {
+		boolean testWorks = true;
+		int YaleUniversityID = 130794;
+		School Yale = new School();
+		Yale = schoolDAO.getSingleSchoolViewInfo(YaleUniversityID);
+		//A massive boolean check on all returned school fields
+		assertEquals("Name", "Yale University", Yale.getName());
+		assertEquals("URL", "www.yale.edu", Yale.getWebsite());
+		assertEquals("SATAvg", 1493, Yale.getSatAvg(), .01);
+		assertEquals("SAT25", 1410, Yale.getSat25(), .01);
+		assertEquals("SAT75", 1600, Yale.getSat75(), .01);
+		assertEquals("ACTAvg", 33, Yale.getActAvg(), .01);
+		assertEquals("ACT25", 31, Yale.getAct25(), .01);
+		assertEquals("ACT75", 35, Yale.getAct75(), 01);
+		assertEquals("Earnings", 75500, Yale.getAvgEarnings());
+		assertEquals("Cost", 61620, Yale.getAvgCost());
+		assertEquals("Debt", 13206, Yale.getMedDebt(), .01);
+		assertEquals("StudentBody", 5473, Yale.getStdBodySz());
+		assertEquals("PopProg1", "Social Sciences", Yale.getPopProg1());
+		assertEquals("PopProg2", "Biological and Biomedical Sciences", Yale.getPopProg2());
+		assertEquals("PopProg3", "Multi/Interdisciplinary Studies", Yale.getPopProg3());
+		assertEquals("PopProg4", "History", Yale.getPopProg4());
+		assertEquals("PopProg5", "English Language and Literature/Letters", Yale.getPopProg5());
+		assertEquals("admRate", .063, Yale.getAdmissionRate(), .01);
+		assertEquals("AvgFamInc", 90290, Yale.getAvgFamilyIncome());
+		assertEquals("MedFamInc", 49166, Yale.getMedFamIncome());
+		assertEquals("TuitionIn", 45800, Yale.getTuitionIn());
+		//TODO fix the rest of these
+		if (Yale.getTuitionOut()!=45800) {
+			System.out.println("TuitionOut");
+			testWorks = false;
+		}
+		if (Yale.getAvgAge()!=19) {
+			System.out.println("Age");
+			testWorks = false;
+		}
+		if (Yale.getFirstGenStudentShare()!=0.224625624) {
+			System.out.println("1stGen");
+			testWorks = false;
+		}
+		if (!Yale.getLevel().equals("4-year")) {
+			System.out.println("level");
+			testWorks = false;
+		}
+		if (Yale.isDistanceLearningNotNull()==false) {
+			System.out.println("distLearningBoolean");
+			testWorks = false;
+		}
+		if (Yale.getDistanceLearning()!=0) {
+			System.out.println("distLearning");
+			testWorks = false;
+		}
+		if (!(Yale.getLocation().getCity().equals(("New Haven")))) {
+			System.out.println("city");
+			testWorks = false;
+		}
+		if (!Yale.getLocation().getStateStr().equals("CT")) {
+			System.out.println("state");
+			testWorks = false;
+		}
+		if (Yale.getFemaleShare()!=0.4902) {
+			System.out.println("female");
+			testWorks = false;
+		}
+		if (Yale.getMaleShare()!=0.5098) {
+			System.out.println("male");
+			testWorks = false;
+		}
+		if (Yale.getWhite()!=0.4705) {
+			System.out.println("white");
+			testWorks = false;
+		}
+		if (Yale.getBlack()!=0.0678) {
+			System.out.println("black");
+			testWorks = false;
+		}
+		if (Yale.getHispanic()!=0.11) {
+			System.out.println("hispanic");
+			testWorks = false;
+		}
+		if (Yale.getAsian()!=0.1655) {
+			System.out.println("asian");
+			testWorks = false;
+		}
+		if (Yale.getAmerican_indian_alaskan_native()!=0.0064) {
+			System.out.println("americanIndian");
+			testWorks = false;
+		}
+		if (Yale.getNative_hawaiian_pacific_islander()!=0) {
+			System.out.println("nativeHawaiian");
+			testWorks = false;
+		}
+		if (Yale.getMultiethnic()!=0.0596) {
+			System.out.println("multiethnic");
+			testWorks = false;
+		}
+		if (Yale.getUnknown_ethnicity()!=0.0163) {
+			System.out.println("unknown ethnicity");
+			testWorks = false;
+		}
+		if (Yale.getNonresident()!=0.104) {
+			System.out.println("nonresident");
+			testWorks = false;
+		}
+		assertTrue("getSingleSchoolViewInfo works", testWorks);
 	}
 	
 	private void testContainsUserFieldsOfStudy() {
@@ -237,6 +345,87 @@ public class SchoolDAOTest {
 		assertEquals("Order incorrect", 110714, schoolsDesc.get(1).getId());
 		//two columns
 		//TODO SQL string looks right but can't verify with workbench cause that's not showing everything
+	}
+	
+	private void testDistance() {
+		testDistanceUser();
+		testDistanceAny();
+	}
+	
+	private void testDistanceUser() {
+		String userName = "distTest";
+		String pw = "distPW";
+		userDAO.createUser(userName, pw);
+		//no matches
+		assertEquals(
+				"Does not return NO COND", CondType.NO_COND, 
+				schoolDAO.distanceRange(100, userName).getConditionType());
+		//one state
+		userDAO.modifyResidence(userName, "Seattle", 53, 98134);
+		Condition c = schoolDAO.distanceRange(50, userName);
+		List<Condition> conditions = new LinkedList<Condition>();
+		conditions.add(c);
+		List<School> schools = schoolDAO.getSchools(conditions, SchoolDAO.COORDINATES);
+		for (School school : schools) {
+			if (school.getLocation().isStateIntNotNull()) {
+				int state = school.getLocation().getStateInt();
+				assertEquals("Non-Washington state matched", 53, state);
+			}
+		}
+		//multiple states
+		Condition c2 = schoolDAO.distanceRange(175, userName);
+		conditions = new LinkedList<Condition>();
+		conditions.add(c2);
+		schools = schoolDAO.getSchools(conditions, SchoolDAO.COORDINATES);
+		boolean oregonMatchFound = false;
+		for (School school : schools) {
+			if (school.getLocation().isStateIntNotNull()) {
+				int state = school.getLocation().getStateInt();
+				if (state != 53) {
+					assertEquals("State not Washington or Oregon", 41, state);
+					if (state == 41) {
+						oregonMatchFound = true;
+					}
+				}
+			}
+		}
+		assertTrue("No Oregon schools found", oregonMatchFound);
+	}
+	
+	private void testDistanceAny() {
+		//no matches
+		assertEquals(
+				"Does not return NO COND", CondType.NO_COND, 
+				schoolDAO.distanceRange(100, 11111).getConditionType());
+		//one state
+		Condition c = schoolDAO.distanceRange(50, 98134);
+		List<Condition> conditions = new LinkedList<Condition>();
+		conditions.add(c);
+		List<School> schools = schoolDAO.getSchools(conditions, SchoolDAO.COORDINATES);
+		for (School school : schools) {
+			if (school.getLocation().isStateIntNotNull()) {
+				int state = school.getLocation().getStateInt();
+				assertEquals("Non-Washington state matched", 53, state);
+			}
+		}
+		//multiple states
+		Condition c2 = schoolDAO.distanceRange(175, 98134);
+		conditions = new LinkedList<Condition>();
+		conditions.add(c2);
+		schools = schoolDAO.getSchools(conditions, SchoolDAO.COORDINATES);
+		boolean oregonMatchFound = false;
+		for (School school : schools) {
+			if (school.getLocation().isStateIntNotNull()) {
+				int state = school.getLocation().getStateInt();
+				if (state != 53) {
+					assertEquals("State not Washington or Orgeon", 41, state);
+					if (state == 41) {
+						oregonMatchFound = true;
+					}
+				}
+			}
+		}
+		assertTrue("No Arizona schools found", oregonMatchFound);
 	}
 	
 	@After

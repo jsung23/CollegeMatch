@@ -2,13 +2,6 @@
 <%@ taglib prefix = "f" uri = "http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix = "fn" uri = "http://java.sun.com/jsp/jstl/functions" %>
 
-<%--
-//data format: rank|id|name|url|admrate|in-tuit|out-tuit|city|stateInt|stateAbbr|satavg|actavg|appstatus|finaid|loanamt|meritamt
-	String[] schools = {" 1| 123| University of Wisconsin-Madison| http://www.wisc.edu| 0.557| 10410| 26660| Madison| 55| WI| 1285.9| 29.2| Applied!| 0| 0| 50",
-			" 2| 456| University of Illinois| http://illinois.edu/| 0.593| 12345| 29646| Champaign| 17| IL| 1326| 29| Not applied yet.| 0| 8000| 0"};	request.setAttribute("schools", schools);
-	request.setAttribute("userState",55);
---%>
-
 <html>
 <head>
 	<title>CollegeMatch: My Favorite Colleges</title> <!-- this will change with each page -->
@@ -31,6 +24,9 @@
 		
 		<!-- Warnings -->
 		<div id="nofavwarning" class="warning hidden">You don't have any favorite schools.</div>
+		<c:if test="${success == 1}">
+			<div id="successnotice" class="notice">Favorite data saved successfully!</div>
+		</c:if>
 		
 		<!-- link to search for more->find schools -->
 		<p>Want to find more? Go to <a href="schoolsearch">search</a>!</p>
@@ -61,82 +57,129 @@
 						<table class="college">
 							<tr>
 								<td>#<c:out value="${rank}" /> <a href='viewSchool?id=<c:out value="${id}" />'><c:out value="${name}" /></a></td>
-								<td class="input"><a href=""><!--delete action--><img src="images/delete-128.png" width="14"></a></td>
+								<td class="input"><a href='modifyFavs?modifyAction=delete&modifyId=<c:out value="${id}" />'><img src="images/delete-128.png" width="14"></a></td>
 							</tr><tr>
 								<td>
-									<dt>Application Status</dt>
-										<dd><c:out value="${status}" /></dd>
-										
-									<dt>Financial Aid</dt>
-										<dd>
-											<c:choose>
-												<c:when test="${finAid > 0}">
-													<f:formatNumber type="CURRENCY" value="${finAid}" />
-												</c:when>
-												<c:otherwise>
-													None.
-												</c:otherwise>
-											</c:choose>
-										</dd>
-										
-									<dt>Loan Amount</dt>
-										<dd>
-											<c:choose>
-												<c:when test="${loans > 0}">
-													<f:formatNumber type="CURRENCY" value="${loans}" />
-												</c:when>
-												<c:otherwise>
-													None.
-												</c:otherwise>
-											</c:choose>
-										</dd>
-										
-									<dt>Merit Scholarships</dt>
-										<dd>
-											<c:choose>
-												<c:when test="${merit > 0}">
-													<f:formatNumber type="CURRENCY" value="${merit}" />
-												</c:when>
-												<c:otherwise>
-													None.
-												</c:otherwise>
-											</c:choose>
-										</dd>
-										
+									<dl>
+										<dt>Application Status</dt>
+											<dd>
+												<c:choose>
+													<c:when test="${fn:length(status) > 0}">
+														<c:out value="${status}" />
+													</c:when>
+													<c:otherwise>
+														No status yet.
+													</c:otherwise>
+												</c:choose>
+											</dd>
+											
+										<dt>Financial Aid</dt>
+											<dd>
+												<c:choose>
+													<c:when test="${finAid > 0}">
+														<f:formatNumber type="CURRENCY" value="${finAid}" />
+													</c:when>
+													<c:otherwise>
+														None.
+													</c:otherwise>
+												</c:choose>
+											</dd>
+											
+										<dt>Loan Amount</dt>
+											<dd>
+												<c:choose>
+													<c:when test="${loans > 0}">
+														<f:formatNumber type="CURRENCY" value="${loans}" />
+													</c:when>
+													<c:otherwise>
+														None.
+													</c:otherwise>
+												</c:choose>
+											</dd>
+											
+										<dt>Merit Scholarships</dt>
+											<dd>
+												<c:choose>
+													<c:when test="${merit > 0}">
+														<f:formatNumber type="CURRENCY" value="${merit}" />
+													</c:when>
+													<c:otherwise>
+														None.
+													</c:otherwise>
+												</c:choose>
+											</dd>
+									</dl>
 								</td>
 								<td class="input alt-action"><a href='editFav?id=<c:out value="${id}" />'>Edit details</a></td>
 								
 							</tr><tr>
 								
 								<td>
-									<dt>School URL</dt>
-										<dd><a href='<c:out value="${url}" />'><c:out value="${url}" /></a></dd>
-										
-									<dt>Admission Rate</dt>
-										<dd><f:formatNumber type="PERCENT" minFractionDigits="2" value="${admRate}" /></dd>
-										
-									<dt>Tuition</dt>
-										<dd>
+									<dl>
+										<dt>School URL</dt>
+											<dd><a href='http://<c:out value="${url}" />'><c:out value="${url}" /></a></dd>
+											
+										<dt>Admission Rate</dt>
+											<dd>
 											<c:choose>
-												<c:when test="${userState == stateId}">
-													<f:formatNumber type="CURRENCY" value="${inTuition}" />
+												<c:when test="${admRate eq '0.0'}">
+													No data
 												</c:when>
 												<c:otherwise>
-													<f:formatNumber type="CURRENCY" value="${outTuition}" />
+													<f:formatNumber type="PERCENT" minFractionDigits="2" value="${admRate}" />
 												</c:otherwise>
 											</c:choose>
-											 / year
 										</dd>
+											
+										<dt>In-State Tuition</dt>
+											<c:choose>
+												<c:when test="${inTuition eq '0'}">
+													<dd>No data</dd>
+												</c:when>
+												<c:otherwise>
+													<dd><f:formatNumber type="CURRENCY" value="${inTuition}" /> / year</dd>
+												</c:otherwise>
+											</c:choose>
+										
+										<dt>Out-of-State Tuition</dt>
+											<c:choose>
+												<c:when test="${outTuition eq '0'}">
+													<dd>No data</dd>
+												</c:when>
+												<c:otherwise>
+													<dd><f:formatNumber type="CURRENCY" value="${outTuition}" /> / year</dd>
+												</c:otherwise>
+											</c:choose>
+
+									</dl>
 								</td>
 								<td>
-									<dt>Location</dt>
-										<dd><c:out value="${city}" />, <c:out value="${stateAbbr}" /></dd>
-									
-									<dt>Average Test Scores</dt>
-										<dd>
-											SAT: <f:formatNumber type="NUMBER" maxFractionDigits="0" groupingUsed="false" value="${sat}" /><br>
-											ACT: <f:formatNumber type="NUMBER" maxFractionDigits="0" groupingUsed="false" value="${act}" />
-										</dd>
+									<dl>
+										<dt>Location</dt>
+											<dd><c:out value="${city}" />, <c:out value="${stateAbbr}" /></dd>
+										
+										<dt>Average Test Scores</dt>
+											<dd>
+												SAT: 
+												<c:choose>
+													<c:when test="${sat eq '0.0'}">
+														No data
+													</c:when>
+													<c:otherwise>
+														<f:formatNumber type="NUMBER" maxFractionDigits="0" groupingUsed="false" value="${sat}" />
+													</c:otherwise>
+												</c:choose><br />
+												ACT: 
+												<c:choose>
+													<c:when test="${act eq '0.0'}">
+														No data
+													</c:when>
+													<c:otherwise>
+														<f:formatNumber type="NUMBER" maxFractionDigits="0" groupingUsed="false" value="${act}" />
+													</c:otherwise>
+												</c:choose>
+											</dd>
+									</dl>
 								</td>
 							</tr>
 						</table>

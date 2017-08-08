@@ -3,6 +3,7 @@ package main.java;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -22,6 +23,7 @@ public class SchoolDAO {
 	public static final byte GENDER = 0x1;
 	public static final byte ETHNIC = 0x2;
 	public static final byte REGION = 0x4;
+	public static final byte COORDINATES = 0x8;
 	
 	public SchoolDAO() {
 		dbUtil = new DBUtil();
@@ -61,6 +63,8 @@ public class SchoolDAO {
 				queryBuilder.append(buildConditionString(c, index));
 			}
 		}
+		
+		queryBuilder.append(" LIMIT 51");
 
 		return processResults(queryBuilder, conditions);
 	}
@@ -119,6 +123,8 @@ public class SchoolDAO {
 			queryBuilder.append(c.isAscending() ? "ASC" : "DESC");
 		}
 		
+		queryBuilder.append(" LIMIT 51");
+		
 		return processResults(queryBuilder, conditions);
 	}
 	
@@ -129,6 +135,8 @@ public class SchoolDAO {
 			return buildSingleStringSubqueryConditionString(c, i);
 		} else if (val.getType() == ValType.OR_GROUP) {
 			return buildORGroupConditionString(c, i).toString();
+		} else if (val.getType() == ValType.DISTANCE) {
+			return val.getDistanceString();
 		}
 		String condStr = c.getColumnName();
 		switch (c.getConditionType()) {
@@ -235,7 +243,8 @@ public class SchoolDAO {
 	private StringBuilder selectAndJoin(byte tablesToJoin) {
 		String baseQuery = 
 				"SELECT school.ID AS ID, school.name AS name, school.url AS url, school.tuition_and_fees_out AS outOfState, "
-				+ "school.tuition_and_fees_in AS inState, location.city AS city, location.state_string AS stateStr, school.SAT_avg AS SAT_avg,"
+				+ "school.tuition_and_fees_in AS inState, location.city AS city, location.state AS state, "
+				+ "location.state_string AS stateStr, school.SAT_avg AS SAT_avg,"
 				+ "school.ACT_avg AS ACT_avg, school.adm_rate AS adm_rate FROM school";
 		StringBuilder queryBuilder = new StringBuilder(baseQuery);
 		//JOINS
@@ -249,6 +258,9 @@ public class SchoolDAO {
 		}
 		if ((tablesToJoin & REGION) == REGION) {
 			queryBuilder.append(" JOIN region ON location.state = region.state");
+		}
+		if ((tablesToJoin & COORDINATES) == COORDINATES) {
+			queryBuilder.append(" JOIN coordinates ON location.ZIP = coordinates.ZIP");
 		}
 		
 		return queryBuilder;
@@ -358,6 +370,416 @@ public class SchoolDAO {
 	}
 	
 	/**
+	 * Returns a condition for filtering on schools within a certain range of user zip.
+	 * If coordinates are not found for the user's ZIP code, it returns a Condition of type
+	 * NO_COND
+	 * 
+	 * @param distance Distance in miles
+	 * @param userName User with the ZIP to use
+	 * @return
+	 */
+	public Condition distanceRange(int distance, String userName) {
+		String query = "SELECT location.ZIP FROM user "
+				+ "JOIN residence ON user.ID = residence.std_ID JOIN location ON location.ID = residence.loc_ID "
+				+ " WHERE user.ID = ?";
+		
+		PreparedStatement getUserZip = null;
+		ResultSet userZip = null;
+		try {
+			getUserZip = dbUtil.getConnection().prepareStatement(query);
+			getUserZip.setString(1, userName);
+			userZip = getUserZip.executeQuery();
+			if (userZip.next()) {
+				return distanceRange(distance, userZip.getInt(1));
+			} else {
+				return new Condition("", CondType.NO_COND, null);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBUtil.closeResultSet(userZip);
+			DBUtil.closeStatement(getUserZip);
+		}
+		return new Condition("", CondType.NO_COND, null);
+	}
+	
+	/**
+	 * Returns a condition for filtering on schools within a certain range of given zip.
+	 * If coordinates are not found for the given ZIP code, it returns a Condition of type
+	 * NO_COND
+	 * 
+	 * @param distance Distance in miles
+	 * @param zipCode The zip code to search from
+	 * @return
+	 */
+	public Condition distanceRange(int distance, int zipCode) {
+		double userLat = 0;
+		double userLon = 0;
+		String query = "SELECT latitude, longitude FROM coordinates "
+				+ "WHERE ZIP=?";
+		
+		PreparedStatement getUserCoord = null;
+		ResultSet userCoord = null;
+		try {
+			getUserCoord = dbUtil.getConnection().prepareStatement(query);
+			getUserCoord.setInt(1, zipCode);
+			userCoord = getUserCoord.executeQuery();
+			if (userCoord.next()) {
+				userLat = userCoord.getDouble(1);
+				userLon = userCoord.getDouble(2);
+			} else {
+				return new Condition("", CondType.NO_COND, null);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		} finally {
+			DBUtil.closeResultSet(userCoord);
+			DBUtil.closeStatement(getUserCoord);
+		}
+		
+		double lon1 = userLon - distance/Math.abs(Math.cos(Math.toRadians(userLat))*69);
+		double lon2 = userLon + distance/Math.abs(Math.cos(Math.toRadians(userLat))*69);
+		double lat1 = userLat - (distance/(double) 69);
+		double lat2 = userLat + (distance/(double) 69);
+		
+		String distQuery = "3956 * 2 * ASIN(SQRT( POWER(SIN((" + userLat + " - coordinates.latitude) "
+				+ "* pi()/180 / 2), 2) + COS(" + userLat + " * pi()/180) * COS(coordinates.latitude * "
+						+ "pi()/180) * POWER(SIN((" + userLon+ " - coordinates.longitude) * pi()/180 / 2), 2) )) "
+								+ "< " + distance + " AND coordinates.longitude BETWEEN " + lon1 + " AND " + 
+						lon2 + " AND coordinates.latitude BETWEEN " + lat1 + " AND " + lat2;
+		
+		return new Condition("", CondType.DISTANCE, CondVal.createDistanceVal(distQuery));
+	}
+	
+	/**
+	 * This method returns a school object with fields matching the fields selected in the query.
+	 * 
+	 * @param schoolID
+	 * @return
+	 */
+	public School getSingleSchoolViewInfo(int schoolID) {
+		School school = new School();
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		ResultSet PopProgRS = null;
+		try {
+			String fullSchoolQuery = 
+					"SELECT school.id AS id, school.name AS name, school.url AS url, school.avg_cost, school.SAT_pct_25_cumulative,"
+					+ "school.SAT_pct_75_cumulative, school.ACT_pct_25_cumulative, school.ACT_pct_75_cumulative,"
+					+ "school.tuition_and_fees_out AS outOfState, school.std_bdy_sz as student_body_size, school.pop_prog_1, school.pop_prog_2,"
+					+ "school.pop_prog_3, school.pop_prog_4, school.pop_prog_5, school.avg_fam_inc, school.med_fam_inc, school.avg_entry_age,"
+					+ "school.1_gen_std_share AS firstGenStudentShare, school.level, school.dist_learning AS distanceLearning,"
+					+ "school.tuition_and_fees_in AS inState, school.tuition_and_fees_out AS outOfState,"
+					+ " location.city AS city, school.SAT_avg, school.ACT_avg, school.adm_rate, genderdemographics.female, genderdemographics.male,"
+					+ "ethnicdemographics.white, ethnicdemographics.black, ethnicdemographics.hispanic, ethnicdemographics.asian,"
+					+ "ethnicdemographics.american_indian_alaskan_native, ethnicdemographics.native_hawaiian_pacific_islander, "
+					+ "ethnicdemographics.two_or_more AS multiethnic, ethnicdemographics.unknown AS unknownEthnicity, "
+					+ "ethnicdemographics.nonresident AS nonresidentAlien, location.city, location.state, location.state_string, school.avg_earnings_6_years_after_matriculation,"
+					+ "school.med_debt";
+			String FROM = 
+					" FROM school JOIN school_loc ON school.ID = school_loc.school_id"
+					+ " JOIN location ON school_loc.loc_ID = location.ID"
+					+ " JOIN GenderDemographics ON school.GenderDemographics_ID = GenderDemographics.ID"
+					+ " JOIN EthnicDemographics ON school.EthnicDemographics_ID = EthnicDemographics.ID"
+					+ " JOIN region ON location.state = region.state";
+			String WHERE =
+					" WHERE school.id = ?";
+			FROM += WHERE;
+			fullSchoolQuery += FROM;
+			
+			pstmt = dbUtil.getConnection().prepareStatement(fullSchoolQuery);
+			pstmt.setInt(1, schoolID);
+			rs = pstmt.executeQuery();
+			if (rs.next()) {
+				Location loc = new Location();
+				String city = rs.getString("city");
+				if (!rs.wasNull()) {
+					school.setLocationIsNotNull(true);
+					loc.setCity(city);
+					loc.setCityIsNotNull(true);
+				}
+				int state_int = rs.getInt("state");
+				if (!rs.wasNull()) {
+					school.setLocationIsNotNull(true);
+					loc.setStateInt(state_int);
+					loc.setStateIntIsNotNull(true);
+				}
+				String state = rs.getString("state_string");
+				if (!rs.wasNull()) {
+					school.setLocationIsNotNull(true);
+					loc.setStateStr(state);
+					loc.setStateStrIsNotNull(true);
+				}
+				school.setLocation(loc);
+				int ID = rs.getInt("id");
+				if (!rs.wasNull()) {
+					school.setId(ID);
+					school.setIdIsNotNull(true);
+				}
+				String name = rs.getString("name");
+				if (!rs.wasNull()) {
+					school.setName(name);
+					school.setNameIsNotNull(true);
+				}
+				String website = rs.getString("url");
+				if (!rs.wasNull()) {
+					school.setWebsite(website);
+					school.setWebsiteIsNotNull(true);
+				}
+				int cost = rs.getInt("avg_cost");
+				if (!rs.wasNull()) {
+					school.setAvgCost(cost);
+					school.setAvgCostIsNotNull(true);
+				}
+				double SAT25 = rs.getDouble("SAT_pct_25_cumulative");
+				if (!rs.wasNull()) {
+					school.setSat25(SAT25);
+					school.setSat25IsNotNull(true);
+				}
+				double SATavg = rs.getDouble("SAT_avg");
+				if (!rs.wasNull()) {
+					school.setSatAvg(SATavg);
+					school.setSatAvgIsNotNull(true);
+				}
+				double SAT75 = rs.getDouble("SAT_pct_75_cumulative");
+				if (!rs.wasNull()) {
+					school.setSat75(SAT75);
+					school.setSat75IsNotNull(true);
+				}
+				double ACTavg = rs.getDouble("ACT_avg");
+				if (!rs.wasNull()) {
+					school.setActAvg(ACTavg);
+					school.setActAvgIsNotNull(true);
+				}
+				double ACT25 = rs.getDouble("ACT_pct_25_cumulative");
+				if (!rs.wasNull()) {
+					school.setAct25(ACT25);
+					school.setAct25IsNotNull(true);
+				}
+				double ACT75 = rs.getDouble("ACT_pct_75_cumulative");
+				if (!rs.wasNull()) {
+					school.setAct75(ACT75);
+					school.setAct75IsNotNull(true);
+				}
+				int tuitionIn = rs.getInt("inState");
+				if (!rs.wasNull()) {
+					school.setTuitionIn(tuitionIn);
+					school.setTuitionInIsNotNull(true);
+				}
+				int tuitionOut = rs.getInt("outOfState");
+				if (!rs.wasNull()) {
+					school.setTuitionOut(tuitionOut);
+					school.setTuitionOutIsNotNull(true);
+				}
+				double admRate = rs.getDouble("adm_rate");
+				if (!rs.wasNull()) {
+					school.setAdmissionRate(admRate);
+					school.setAdmissionRateIsNotNull(true);
+				}
+				int studentBody = rs.getInt("student_body_size");
+				if (!rs.wasNull()) {
+					school.setStdBodySz(studentBody);
+					school.setStdBodySzIsNotNull(true);
+				}
+				int popProg1 = rs.getInt("pop_prog_1");
+				if (!rs.wasNull()) {
+					school.setPopProg1ID(popProg1);
+					school.setPopProg1IDIsNotNull(true);
+				}
+				int popProg2 = rs.getInt("pop_prog_2");
+				if (!rs.wasNull()) {
+					school.setPopProg2ID(popProg2);
+					school.setPopProg2IDIsNotNull(true);
+				}
+				int popProg3 = rs.getInt("pop_prog_3");
+				if (!rs.wasNull()) {
+					school.setPopProg3ID(popProg3);
+					school.setPopProg3IDIsNotNull(true);
+				}
+				int popProg4 = rs.getInt("pop_prog_4");
+				if (!rs.wasNull()) {
+					school.setPopProg4ID(popProg4);
+					school.setPopProg4IDIsNotNull(true);
+				}
+				int popProg5 = rs.getInt("pop_prog_5");
+				if (!rs.wasNull() ) {
+					school.setPopProg5ID(popProg5);
+					school.setPopProg5IDIsNotNull(true);
+				}
+				int avgFamInc = rs.getInt("avg_fam_inc");
+				if (!rs.wasNull() ) {
+					school.setAvgFamilyIncome(avgFamInc);
+					school.setAvgFamIncomeIsNotNull(true);
+				}
+				int medFamInc = rs.getInt("med_fam_inc");
+				if (!rs.wasNull() ) {
+					school.setMedFamIncome(medFamInc);
+					school.setMedFamIncomeIsNotNull(true);
+				}
+				int age = rs.getInt("avg_entry_age");
+				if (!rs.wasNull()) {
+					school.setAvgAge(age);
+					school.setAvgAgeIsNotNull(true);
+				}
+				double firstGen = rs.getDouble("firstGenStudentShare");
+				if (!rs.wasNull()) {
+					school.setFirstGenStudentShare(firstGen);
+					school.setFirstGenStudentShareIsNotNull(true);
+				}
+				int earnings = rs.getInt("avg_earnings_6_years_after_matriculation");
+				if (!rs.wasNull()) {
+					school.setAvgEarnings(earnings);
+					school.setAvgEarningsIsNotNull(true);
+				}
+				double debt = rs.getDouble("med_debt");
+				if (!rs.wasNull()) {
+					school.setMedDebt(debt);
+					school.setMedDebtIsNotNull(true);
+				}
+				if (rs.getInt("level") == 1) {
+				school.setLevel("4-year");
+				}
+				else if (rs.getInt("level") == 2) {
+					school.setLevel("2-year");
+				}
+				int dist = rs.getInt("distanceLearning");
+				if (!rs.wasNull()) {
+					school.setDistanceLearning(dist);
+					school.setDistanceLearningIsNotNull(true);
+				}
+				double male = rs.getDouble("male");
+				if (!rs.wasNull()) {
+					school.setMaleShare(male);
+					school.setMaleShareIsNotNull(true);
+				}
+				double female = rs.getDouble("female");
+				if (!rs.wasNull()) {
+					school.setFemaleShare(female);
+					school.setFemaleShareIsNotNull(true);
+				}
+				double white = rs.getDouble("white");
+				if (!rs.wasNull()) {
+					school.setWhite(white);
+					school.setWhiteIsNotNull(true);
+				}
+				double black = rs.getDouble("black");
+				if (!rs.wasNull()) {
+					school.setBlack(black);
+					school.setBlackIsNotNull(true);
+				}
+				double hispanic = rs.getDouble("hispanic");
+				if (!rs.wasNull()) {
+					school.setHispanic(hispanic);
+					school.setHispanicIsNotNull(true);
+				}
+				double asian = rs.getDouble("asian");
+				if (!rs.wasNull()) {
+					school.setAsian(asian);
+					school.setAsianIsNotNull(true);
+				}
+				double americanIndian = rs.getDouble("american_indian_alaskan_native");
+				if (!rs.wasNull()) {
+					school.setAmerican_indian_alaskan_native(americanIndian);
+					school.setAmericanIndianAlaskanNativeIsNotNull(true);
+				}
+				double nativeHawaiian = rs.getDouble("native_hawaiian_pacific_islander");
+				if (!rs.wasNull()) {
+					school.setNative_hawaiian_pacific_islander(nativeHawaiian);
+					school.setNativeHawaiianPacificIslanderIsNotNull(true);
+				}
+				double multi = rs.getDouble("multiethnic");
+				if (!rs.wasNull()) {
+					school.setMultiethnic(multi);
+					school.setMultiethnicIsNotNull(true);
+				}
+				double unknown = rs.getDouble("unknownEthnicity");
+				if (!rs.wasNull()) {
+					school.setUnknown_ethnicity(unknown);
+					school.setUnknownEthnicityIsNotNull(true);
+				}
+				double nonresident = rs.getDouble("nonresidentAlien");
+				if (!rs.wasNull()) {
+					school.setNonresident(nonresident);
+					school.setNonresidentIsNotNull(true);
+				}
+				DBUtil.closeStatement(pstmt);
+				
+				//Top 5 fields queries
+				String PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
+						+ "WHERE fieldsOfStudy.ID = ?";
+				pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
+				pstmt.setInt(1, school.getPopProg1ID());
+				PopProgRS = pstmt.executeQuery();
+				if (PopProgRS.next()) {
+				school.setPopProg1(PopProgRS.getString(1));
+				school.setPopProg1IsNotNull(true);
+				}
+				DBUtil.closeResultSet(PopProgRS);
+				DBUtil.closeStatement(pstmt);
+
+				//pop prog 2
+				PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
+						+ "WHERE fieldsOfStudy.ID = ?";
+				pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
+				pstmt.setInt(1, school.getPopProg2ID());
+				PopProgRS = pstmt.executeQuery();
+				if (PopProgRS.next()) {
+				school.setPopProg2(PopProgRS.getString(1));
+				school.setPopProg2IsNotNull(true);
+				}
+				DBUtil.closeResultSet(PopProgRS);
+				DBUtil.closeStatement(pstmt);
+
+				//pop prog 3
+				PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
+						+ "WHERE fieldsOfStudy.ID = ?";
+				pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
+				pstmt.setInt(1, school.getPopProg3ID());
+				PopProgRS = pstmt.executeQuery();
+				if (PopProgRS.next()) {
+				school.setPopProg3(PopProgRS.getString(1));
+				school.setPopProg3IsNotNull(true);
+				}
+				DBUtil.closeResultSet(PopProgRS);
+				DBUtil.closeStatement(pstmt);
+				
+				//pop prog 4 
+				PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
+						+ "WHERE fieldsOfStudy.ID = ?";
+				pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
+				pstmt.setInt(1, school.getPopProg4ID());
+				PopProgRS = pstmt.executeQuery();
+				if (PopProgRS.next()) {
+				school.setPopProg4(PopProgRS.getString(1));
+				school.setPopProg4IsNotNull(true);
+				}
+				DBUtil.closeResultSet(PopProgRS);
+				DBUtil.closeStatement(pstmt);
+			
+				//pop prog 5
+				PopProgStringQuery = "SELECT fieldsOfStudy.name FROM fieldsOfStudy "
+						+ "WHERE fieldsOfStudy.ID = ?";
+				pstmt = dbUtil.getConnection().prepareStatement(PopProgStringQuery);
+				pstmt.setInt(1, school.getPopProg5ID());
+				PopProgRS = pstmt.executeQuery();
+				if (PopProgRS.next()) {
+				school.setPopProg5(PopProgRS.getString(1));
+				school.setPopProg5IsNotNull(true);
+				}
+			}
+		}
+			catch (SQLException e) {
+				System.out.println(e.toString());
+			}
+		finally {
+			DBUtil.closeResultSet(PopProgRS);
+			DBUtil.closeResultSet(rs);
+			DBUtil.closeStatement(pstmt);
+		}
+		return school;
+	}
+	
+	/**
 	 * 
 	 * @param sb StringBuilder for the PreparedStatement
 	 * @param conditions The list of search criteria
@@ -377,11 +799,19 @@ public class SchoolDAO {
 				Location l = new Location();
 				String city = rs.getString("city");
 				if (!rs.wasNull()) {
+					s.setLocationIsNotNull(true);
 					l.setCityIsNotNull(true);
 					l.setCity(city);
 				}
+				int state_int = rs.getInt("state");
+				if (!rs.wasNull()) {
+					s.setLocationIsNotNull(true);
+					l.setStateIntIsNotNull(true);
+					l.setStateInt(state_int);
+				}
 				String state = rs.getString("stateStr");
 				if (!rs.wasNull()) {
+					s.setLocationIsNotNull(true);
 					l.setStateStrIsNotNull(true);
 					l.setStateStr(state);
 				}
@@ -459,8 +889,8 @@ public class SchoolDAO {
 					case INT_RANGE: 	pstmt.setInt(val.getIndexOfMin(), val.getMinInt());
 										pstmt.setInt(val.getIndexOfMax(), val.getMaxInt());
 										break;
-					case DOUBLE_RANGE:	pstmt.setInt(val.getIndexOfMin(), val.getMinInt());
-										pstmt.setInt(val.getIndexOfMax(), val.getMaxInt());
+					case DOUBLE_RANGE:	pstmt.setDouble(val.getIndexOfMin(), val.getMinDouble());
+										pstmt.setDouble(val.getIndexOfMax(), val.getMaxDouble());
 										break;
 					case INT:			pstmt.setInt(val.getIndex(), val.getIntVal());
 										break;
@@ -472,6 +902,7 @@ public class SchoolDAO {
 													break;
 					case OR_GROUP:		insertIntoPrepStmt(val.getOrConditions(), pstmt);	//recursive
 										break;
+					case DISTANCE:		continue;
 				}
 			}
 		}

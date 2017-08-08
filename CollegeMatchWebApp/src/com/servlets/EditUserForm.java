@@ -1,7 +1,10 @@
 package com.servlets;
 
 import java.io.IOException;
-import main.java.*;
+import main.java.UserDAO;
+import main.java.User;
+import main.java.Location;
+import main.java.FavoriteFieldOfStudy;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -56,6 +59,14 @@ public class EditUserForm extends HttpServlet {
 		}
 		if (currentUser.isFavoriteFieldsOfStudyNotNull()) {
 			List<FavoriteFieldOfStudy> favorites = currentUser.getFavoriteFieldsOfStudy();
+			fieldArray = new String[favorites.size()];
+			for (int i = 0; i < favorites.size(); i++) {
+				if (favorites.get(i).isRankNotNull() && favorites.get(i).isFieldOfStudyNotNull()) {
+					fieldArray[i] = favorites.get(i).getRank() + "|" + favorites.get(i).getFieldOfStudy();
+				}
+			}
+		} else {
+			List<FavoriteFieldOfStudy> favorites = db.getFavFields(username);
 			fieldArray = new String[favorites.size()];
 			for (int i = 0; i < favorites.size(); i++) {
 				if (favorites.get(i).isRankNotNull() && favorites.get(i).isFieldOfStudyNotNull()) {
